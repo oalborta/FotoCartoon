@@ -39,9 +39,13 @@
             width: 100%;
             border-radius: 10px;
             background: #000;
+            transform: scaleX(-1); /* Hace efecto espejo para que la selfie se sienta natural */
+        }
+        img#resultado-ia {
+            transform: none; /* La foto final procesada no necesita efecto espejo */
         }
         .hidden { display: none; }
-        .loading { font-style: italic; color: #f1c40f; }
+        .loading { font-style: italic; color: #f1c40f; padding: 20px; }
     </style>
 </head>
 <body>
@@ -52,9 +56,9 @@
     <!-- PANTALLA 1: MENÚ DE ESTILOS -->
     <div id="pantalla-menu" class="menu">
         <h3>Elige tu estilo de caricatura:</h3>
-        <button onclick="seleccionarEstilo('Pixar 3D animation style, Disney character, highly detailed, cute')">Estilo Disney / Pixar 3D</button>
-        <button onclick="seleccionarEstilo('Anime manga style, colorful, beautiful expression, studio ghibli vibe')">Estilo Anime / Manga</button>
-        <button onclick="seleccionarEstilo('Retro pop art comic book style, bold lines, vibrant colors, vintage dots')">Estilo Pop Art / Comic</button>
+        <button onclick="seleccionarEstilo('A beautiful Pixar 3D 3d animation style character avatar, Disney movie portrait, highly detailed face')">Estilo Disney / Pixar 3D</button>
+        <button onclick="seleccionarEstilo('Anime manga style illustration, colorful art, beautiful studio ghibli aesthetic, anime face')">Estilo Anime / Manga</button>
+        <button onclick="seleccionarEstilo('Retro pop art comic book style drawing, bold lines, vibrant colors, vintage dots, comic poster art')">Estilo Pop Art / Comic</button>
     </div>
 
     <!-- PANTALLA 2: CÁMARA -->
@@ -66,7 +70,7 @@
 
     <!-- PANTALLA 3: PROCESANDO Y RESULTADO -->
     <div id="pantalla-resultado" class="result-box hidden">
-        <div id="loading" class="loading">🪄 La IA está dibujando tu retrato... (espera unos segundos)</div>
+        <div id="loading" class="loading">🪄 La IA está procesando tu selfie...<br><small>Si es la primera foto del día, puede tardar hasta 20 segundos en despertar al servidor gratuito.</small></div>
         <img id="resultado-ia" class="hidden" alt="Tu caricatura">
         <canvas id="canvas" class="hidden"></canvas>
         <button id="btn-reintentar" onclick="volverMenu()" class="hidden">✨ Hacer otra foto</button>
@@ -74,10 +78,10 @@
 </div>
 
 <script>
-    // REEMPLAZA ESTO CON TU TOKEN DE HUGGING FACE [1]
+    // REEMPLAZA ESTO CON TU TOKEN REAL DE HUGGING FACE
     const HF_TOKEN = "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"; 
     
-    // Usaremos un modelo gratuito muy rápido de imagen a imagen [1]
+    // Cambiamos a este modelo que es extremadamente compatible con envío directo de imágenes
     const MODEL_URL = "https://huggingface.co";
 
     let promptSeleccionado = "";
@@ -92,13 +96,24 @@
 
     async function encenderCamara() {
         try {
-            streamVo = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "user" }, 
-                audio: false 
-            });
+            // Fuerza estrictamente el uso de la cámara frontal ("user")
+            const constraints = {
+                audio: false,
+                video: {
+                    facingMode: { exact: "user" } 
+                }
+            };
+            
+            // Si el celular se pone estricto con el comando 'exact', intentamos el modo normal
+            try {
+                streamVo = await navigator.mediaDevices.getUserMedia(constraints);
+            } catch(e) {
+                streamVo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+            }
+
             document.getElementById('video').srcObject = streamVo;
         } catch (err) {
-            alert("No se pudo acceder a la cámara: " + err);
+            alert("Error al abrir cámara frontal: " + err.message + "\nVerifica que diste permisos de cámara en tu navegador.");
         }
     }
 
@@ -107,14 +122,17 @@
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
 
-        // Ajustamos el tamaño del lienzo al video
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        // Captura el tamaño exacto del video del teléfono
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
         
-        // Dibujamos el cuadro actual del video en el lienzo
+        // Dibujamos la foto invirtiendo el espejo para que quede al derecho
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        // Apagamos la cámara para ahorrar batería
+        ctx.setTransform(1, 0, 0, 1, 0, 0); // Restaurar lienzo
+
+        // Apagar cámara
         if(streamVo) streamVo.getTracks().forEach(track => track.stop());
 
         document.getElementById('pantalla-camara').classList.add('hidden');
@@ -123,30 +141,37 @@
         document.getElementById('resultado-ia').classList.add('hidden');
         document.getElementById('btn-reintentar').classList.add('hidden');
 
-        // Convertimos la imagen a un archivo (Blob) para enviárselo a la IA [1]
-        canvas.toBlob(enviarAIA, 'image/jpeg', 0.8);
+        // Enviamos la foto optimizada en calidad media para que cargue rápido
+        canvas.toBlob(enviarAIA, 'image/jpeg', 0.7);
     }
 
     async function enviarAIA(blob) {
         try {
-            // Creamos los datos para enviar el archivo y el prompt juntos [1]
-            const formData = new FormData();
-            formData.append("image", blob);
-            formData.append("prompt", promptSeleccionado);
-            formData.append("strength", "0.6"); // Cambia la foto original un 60% para darle el look animado
-
+            // Enviamos el archivo binario limpio a la API, añadiendo el estilo seleccionado en las cabeceras
             const response = await fetch(MODEL_URL, {
                 method: "POST",
-                headers: { "Authorization": `Bearer ${HF_TOKEN}` },
-                body: blob // Algunos modelos libres leen directamente el archivo binario de la imagen [1]
+                headers: { 
+                    "Authorization": `Bearer ${HF_TOKEN}`,
+                    "Content-Type": "application/octet-stream",
+                    "X-Prompt": promptSeleccionado // Pasamos el filtro deseado
+                },
+                body: blob 
             });
 
-            if (!response.ok) throw new Error("Error en el servidor de IA");
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error("El servidor de IA está ocupado o iniciando. Intenta de nuevo. " + errText);
+            }
 
             const respuestaBlob = await response.blob();
+            
+            // Si la respuesta no es una imagen válida, hubo un fallo en el servidor
+            if (!respuestaBlob.type.startsWith('image/')) {
+                throw new Error("La IA no devolvió una imagen válida.");
+            }
+
             const urlImagenFinal = URL.createObjectURL(respuestaBlob);
             
-            // Mostramos la imagen final procesada
             document.getElementById('loading').classList.add('hidden');
             const imgResultado = document.getElementById('resultado-ia');
             imgResultado.src = urlImagenFinal;
@@ -154,13 +179,14 @@
             document.getElementById('btn-reintentar').classList.remove('hidden');
 
         } catch (error) {
-            alert("Hubo un problema al procesar la imagen: " + error.message);
+            alert("Aviso: " + error.message);
             volverMenu();
         }
     }
 
     function volverMenu() {
         if(streamVo) streamVo.getTracks().forEach(track => track.stop());
+        document.getElementById('pantalla-menu').classList.remove('remove');
         document.getElementById('pantalla-menu').classList.remove('hidden');
         document.getElementById('pantalla-camara').classList.add('hidden');
         document.getElementById('pantalla-resultado').classList.add('hidden');
