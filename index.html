@@ -410,25 +410,43 @@ function apagarCamara() {
 }
 
 /* =============================================
-   CAPTURA DE FOTO — LO QUE FALTABA
+   CAPTURA DE FOTO
    ============================================= */
 async function tomarFoto() {
     const video = document.getElementById('video');
 
-    // Verificar que el video esté listo
-    if (video.readyState < 2) {
+    if (video.readyState < 2 || !video.videoWidth) {
         alert('La cámara aún se está preparando. Espera un momento e intenta de nuevo.');
         return;
     }
 
-    // Detenemos la cámara para liberar recursos
+    // ---- CAPTURAR EL FRAME PRIMERO, antes de tocar el stream ----
+    const cvs = document.getElementById('cvs-work');
+    const ctx = cvs.getContext('2d', { willReadFrequently: true });
+
+    const MAX = 480;
+    const escala = Math.min(MAX / video.videoWidth, MAX / video.videoHeight, 1);
+    const w = Math.round(video.videoWidth * escala);
+    const h = Math.round(video.videoHeight * escala);
+    cvs.width = w;
+    cvs.height = h;
+
+    // Dibujar el frame con flip horizontal (espejo)
+    ctx.save();
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, -w, 0, w, h);
+    ctx.restore();
+
+    // Guardar la original ANTES de cualquier procesamiento
+    urlOriginal = cvs.toDataURL('image/jpeg', 0.85);
+
+    // ---- AHORA sí podemos apagar la cámara de forma segura ----
     apagarCamara();
 
-    // Pasamos a la pantalla de procesamiento
+    // Pasar a la pantalla de procesamiento
     mostrarPantalla('screen-processing');
     reiniciarPasos();
 
-    // Ejecutamos el pipeline de transformación
     try {
         await procesarCaricatura(estiloActual);
     } catch (err) {
@@ -439,29 +457,16 @@ async function tomarFoto() {
 }
 
 /* =============================================
-   PIPELINE PRINCIPAL DE CARICATURA
+   PIPELINE PRINCIPAL — ya no toca el video
    ============================================= */
 async function procesarCaricatura(estilo) {
-    const video = document.getElementById('video');
     const cvs = document.getElementById('cvs-work');
     const ctx = cvs.getContext('2d', { willReadFrequently: true });
+    const w = cvs.width;
+    const h = cvs.height;
 
-    // Redimensionar para rendimiento en móviles (máx 480px)
-    const MAX = 480;
-    const escala = Math.min(MAX / video.videoWidth, MAX / video.videoHeight, 1);
-    const w = Math.round(video.videoWidth * escala);
-    const h = Math.round(video.videoHeight * escala);
-    cvs.width = w;
-    cvs.height = h;
-
-    // ---- PASO 0: Capturar fotograma con flip horizontal (espejo) ----
+    // ---- PASO 0: Frame ya capturado, solo confirmamos ----
     await marcarPaso(0);
-    ctx.save();
-    ctx.scale(-1, 1);
-    ctx.drawImage(video, -w, 0, w, h);
-    ctx.restore();
-    // Guardamos la original ANTES de procesar
-    urlOriginal = cvs.toDataURL('image/jpeg', 0.85);
     await dormir(280);
 
     // ---- PASO 1: Suavizado según estilo ----
@@ -483,12 +488,10 @@ async function procesarCaricatura(estilo) {
     const px = imgData.data;
 
     if (estilo === 'popart') {
-        // Pop Art: posterización extrema + paleta limitada
         posterizar(px, 4);
         mapearPaletaPopArt(px);
         ajustarSaturacion(px, 1.5);
     } else {
-        // Pixar / Anime: posterización + saturación
         const niveles = estilo === 'pixar' ? 8 : 5;
         posterizar(px, niveles);
         const sat = estilo === 'pixar' ? 1.4 : 1.2;
@@ -496,7 +499,6 @@ async function procesarCaricatura(estilo) {
         if (estilo === 'anime') aclararTonosPiel(px);
     }
 
-    // Superponer bordes sobre la imagen coloreada
     const cfgBordes = {
         pixar:  { umbral: 40, fuerza: 0.6 },
         anime:  { umbral: 18, fuerza: 0.95 },
@@ -512,14 +514,10 @@ async function procesarCaricatura(estilo) {
     if (estilo === 'popart') {
         overlayHalftone(ctx, w, h);
     }
-    // Viñeta sutil para todos los estilos
     aplicarVigneta(ctx, w, h);
     await dormir(250);
 
-    // Generar resultado
     urlResultado = cvs.toDataURL('image/png');
-
-    // Mostrar pantalla de resultado
     mostrarResultado(estilo);
 }
 
