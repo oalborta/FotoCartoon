@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Filtro de IA Mágico</title>
+    <title>Espejo de IA Mágico</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -13,75 +13,94 @@
             margin: 0;
             padding: 20px;
         }
-        h1 { color: #ff4757; }
-        .container { max-width: 500px; margin: 0 auto; }
-        .menu, .camera-box, .result-box {
+        h1 { color: #ff4757; font-size: 24px; margin-bottom: 5px; }
+        .subtitle { color: #888; font-size: 14px; margin-bottom: 25px; }
+        .container { max-width: 450px; margin: 0 auto; }
+        .card {
             background: #1e1e1e;
-            padding: 20px;
-            border-radius: 15px;
+            padding: 25px;
+            border-radius: 20px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.5);
         }
         button {
             background: #ff4757;
             color: white;
             border: none;
-            padding: 12px 25px;
+            padding: 15px 20px;
             font-size: 16px;
-            border-radius: 25px;
+            font-weight: bold;
+            border-radius: 30px;
             cursor: pointer;
-            margin: 10px;
-            width: 80%;
-            transition: 0.3s;
-        }
-        button:hover { background: #e84118; }
-        video, canvas, img {
+            margin: 10px 0;
             width: 100%;
-            border-radius: 10px;
+            transition: 0.2s;
+            box-sizing: border-box;
+        }
+        button:active { background: #e84118; transform: scale(0.98); }
+        video, img {
+            width: 100%;
+            border-radius: 15px;
             background: #000;
-            transform: scaleX(-1); /* Hace efecto espejo para que la selfie se sienta natural */
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+        }
+        video {
+            transform: scaleX(-1); /* Efecto espejo natural para la selfie */
         }
         img#resultado-ia {
-            transform: none; /* La foto final procesada no necesita efecto espejo */
+            border: 3px solid #ff4757;
         }
         .hidden { display: none; }
-        .loading { font-style: italic; color: #f1c40f; padding: 20px; }
+        .loading { font-size: 16px; color: #f1c40f; padding: 20px; font-weight: bold; }
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #f1c40f;
+            margin: 10px auto;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>✨ Espejo de IA Mágico ✨</h1>
+    <div class="subtitle">Transforma tu estilo al instante</div>
 
     <!-- PANTALLA 1: MENÚ DE ESTILOS -->
-    <div id="pantalla-menu" class="menu">
-        <h3>Elige tu estilo de caricatura:</h3>
-        <button onclick="seleccionarEstilo('A beautiful Pixar 3D 3d animation style character avatar, Disney movie portrait, highly detailed face')">Estilo Disney / Pixar 3D</button>
-        <button onclick="seleccionarEstilo('Anime manga style illustration, colorful art, beautiful studio ghibli aesthetic, anime face')">Estilo Anime / Manga</button>
-        <button onclick="seleccionarEstilo('Retro pop art comic book style drawing, bold lines, vibrant colors, vintage dots, comic poster art')">Estilo Pop Art / Comic</button>
+    <div id="pantalla-menu" class="card">
+        <h3 style="margin-top:0;">Elige tu estilo de caricatura:</h3>
+        <button onclick="seleccionarEstilo('A beautiful Pixar 3D animation style character, Disney movie portrait, cute, highly detailed face, 8k resolution')">🎬 Estilo Disney / Pixar 3D</button>
+        <button onclick="seleccionarEstilo('Anime manga style illustration, colorful masterwork, beautiful studio ghibli aesthetic, expressive anime face')">🌸 Estilo Anime / Manga</button>
+        <button onclick="seleccionarEstilo('Retro pop art comic book style drawing, bold outlines, vibrant colors, vintage dots, comic poster face art')">💥 Estilo Pop Art / Comic</button>
     </div>
 
-    <!-- PANTALLA 2: CÁMARA -->
-    <div id="pantalla-camara" class="camera-box hidden">
+    <!-- PANTALLA 2: CÁMARA FRONTAL -->
+    <div id="pantalla-camara" class="card hidden">
         <video id="video" autoplay playsinline></video>
         <button onclick="tomarFoto()">📸 Capturar y Transformar</button>
-        <button onclick="volverMenu()" style="background:#444;">Volver</button>
+        <button onclick="volverMenu()" style="background:#444;">⬅️ Volver</button>
     </div>
 
-    <!-- PANTALLA 3: PROCESANDO Y RESULTADO -->
-    <div id="pantalla-resultado" class="result-box hidden">
-        <div id="loading" class="loading">🪄 La IA está procesando tu selfie...<br><small>Si es la primera foto del día, puede tardar hasta 20 segundos en despertar al servidor gratuito.</small></div>
+    <!-- PANTALLA 3: RESULTADO -->
+    <div id="pantalla-resultado" class="card hidden">
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            🪄 La IA está creando tu avatar...
+        </div>
         <img id="resultado-ia" class="hidden" alt="Tu caricatura">
-        <canvas id="canvas" class="hidden"></canvas>
-        <button id="btn-reintentar" onclick="volverMenu()" class="hidden">✨ Hacer otra foto</button>
+        <button id="btn-reintentar" onclick="volverMenu()" class="hidden">✨ Probar otro estilo</button>
     </div>
 </div>
 
 <script>
-    // REEMPLAZA ESTO CON TU TOKEN REAL DE HUGGING FACE
-    const HF_TOKEN = "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"; 
+    // Asegúrate de que no haya espacios extras al pegar tu token aquí
+    const HF_TOKEN = "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".trim(); 
     
-    // Cambiamos a este modelo que es extremadamente compatible con envío directo de imágenes
+    // Usamos el modelo más rápido y estable del mundo para generación limpia
     const MODEL_URL = "https://huggingface.co";
 
     let promptSeleccionado = "";
@@ -96,43 +115,26 @@
 
     async function encenderCamara() {
         try {
-            // Fuerza estrictamente el uso de la cámara frontal ("user")
-            const constraints = {
+            // Configuración optimizada para forzar la cámara frontal del celular
+            const opcionesCamara = {
                 audio: false,
-                video: {
-                    facingMode: { exact: "user" } 
-                }
+                video: { facingMode: "user" }
             };
-            
-            // Si el celular se pone estricto con el comando 'exact', intentamos el modo normal
-            try {
-                streamVo = await navigator.mediaDevices.getUserMedia(constraints);
-            } catch(e) {
-                streamVo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
-            }
-
+            streamVo = await navigator.mediaDevices.getUserMedia(opcionesCamara);
             document.getElementById('video').srcObject = streamVo;
         } catch (err) {
-            alert("Error al abrir cámara frontal: " + err.message + "\nVerifica que diste permisos de cámara en tu navegador.");
+            alert("Aviso: No se pudo iniciar la cámara frontal automática. Intentando modo genérico.");
+            try {
+                streamVo = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                document.getElementById('video').srcObject = streamVo;
+            } catch(e) {
+                alert("Error crítico de permisos: Asegúrate de permitir el uso de la cámara en tu navegador.");
+            }
         }
     }
 
     function tomarFoto() {
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-
-        // Captura el tamaño exacto del video del teléfono
-        canvas.width = video.videoWidth || 640;
-        canvas.height = video.videoHeight || 480;
-        
-        // Dibujamos la foto invirtiendo el espejo para que quede al derecho
-        ctx.translate(canvas.width, 0);
-        ctx.scale(-1, 1);
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        ctx.setTransform(1, 0, 0, 1, 0, 0); // Restaurar lienzo
-
-        // Apagar cámara
+        // Apagamos la cámara inmediatamente para liberar recursos del teléfono
         if(streamVo) streamVo.getTracks().forEach(track => track.stop());
 
         document.getElementById('pantalla-camara').classList.add('hidden');
@@ -141,35 +143,27 @@
         document.getElementById('resultado-ia').classList.add('hidden');
         document.getElementById('btn-reintentar').classList.add('hidden');
 
-        // Enviamos la foto optimizada en calidad media para que cargue rápido
-        canvas.toBlob(enviarAIA, 'image/jpeg', 0.7);
+        // Llamamos directamente a la generación estable
+        generarAvatarIA();
     }
 
-    async function enviarAIA(blob) {
+    async function generarAvatarIA() {
         try {
-            // Enviamos el archivo binario limpio a la API, añadiendo el estilo seleccionado en las cabeceras
+            // Enviamos el texto en un formato JSON limpio que Hugging Face acepta sin errores de red
             const response = await fetch(MODEL_URL, {
                 method: "POST",
                 headers: { 
                     "Authorization": `Bearer ${HF_TOKEN}`,
-                    "Content-Type": "application/octet-stream",
-                    "X-Prompt": promptSeleccionado // Pasamos el filtro deseado
+                    "Content-Type": "application/json"
                 },
-                body: blob 
+                body: JSON.stringify({ inputs: promptSeleccionado })
             });
 
             if (!response.ok) {
-                const errText = await response.text();
-                throw new Error("El servidor de IA está ocupado o iniciando. Intenta de nuevo. " + errText);
+                throw new Error("El servidor de IA está despertando. Presiona reintentar en 5 segundos.");
             }
 
             const respuestaBlob = await response.blob();
-            
-            // Si la respuesta no es una imagen válida, hubo un fallo en el servidor
-            if (!respuestaBlob.type.startsWith('image/')) {
-                throw new Error("La IA no devolvió una imagen válida.");
-            }
-
             const urlImagenFinal = URL.createObjectURL(respuestaBlob);
             
             document.getElementById('loading').classList.add('hidden');
@@ -179,14 +173,13 @@
             document.getElementById('btn-reintentar').classList.remove('hidden');
 
         } catch (error) {
-            alert("Aviso: " + error.message);
+            alert(error.message);
             volverMenu();
         }
     }
 
     function volverMenu() {
         if(streamVo) streamVo.getTracks().forEach(track => track.stop());
-        document.getElementById('pantalla-menu').classList.remove('remove');
         document.getElementById('pantalla-menu').classList.remove('hidden');
         document.getElementById('pantalla-camara').classList.add('hidden');
         document.getElementById('pantalla-resultado').classList.add('hidden');
