@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Filtro de IA Mágico</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #121212;
+            color: white;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 { color: #ff4757; }
+        .container { max-width: 500px; margin: 0 auto; }
+        .menu, .camera-box, .result-box {
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        button {
+            background: #ff4757;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 16px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 10px;
+            width: 80%;
+            transition: 0.3s;
+        }
+        button:hover { background: #e84118; }
+        video, canvas, img {
+            width: 100%;
+            border-radius: 10px;
+            background: #000;
+        }
+        .hidden { display: none; }
+        .loading { font-style: italic; color: #f1c40f; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>✨ Espejo de IA Mágico ✨</h1>
+
+    <!-- PANTALLA 1: MENÚ DE ESTILOS -->
+    <div id="pantalla-menu" class="menu">
+        <h3>Elige tu estilo de caricatura:</h3>
+        <button onclick="seleccionarEstilo('Pixar 3D animation style, Disney character, highly detailed, cute')">Estilo Disney / Pixar 3D</button>
+        <button onclick="seleccionarEstilo('Anime manga style, colorful, beautiful expression, studio ghibli vibe')">Estilo Anime / Manga</button>
+        <button onclick="seleccionarEstilo('Retro pop art comic book style, bold lines, vibrant colors, vintage dots')">Estilo Pop Art / Comic</button>
+    </div>
+
+    <!-- PANTALLA 2: CÁMARA -->
+    <div id="pantalla-camara" class="camera-box hidden">
+        <video id="video" autoplay playsinline></video>
+        <button onclick="tomarFoto()">📸 Capturar y Transformar</button>
+        <button onclick="volverMenu()" style="background:#444;">Volver</button>
+    </div>
+
+    <!-- PANTALLA 3: PROCESANDO Y RESULTADO -->
+    <div id="pantalla-resultado" class="result-box hidden">
+        <div id="loading" class="loading">🪄 La IA está dibujando tu retrato... (espera unos segundos)</div>
+        <img id="resultado-ia" class="hidden" alt="Tu caricatura">
+        <canvas id="canvas" class="hidden"></canvas>
+        <button id="btn-reintentar" onclick="volverMenu()" class="hidden">✨ Hacer otra foto</button>
+    </div>
+</div>
+
+<script>
+    // REEMPLAZA ESTO CON TU TOKEN DE HUGGING FACE [1]
+    const HF_TOKEN = "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"; 
+    
+    // Usaremos un modelo gratuito muy rápido de imagen a imagen [1]
+    const MODEL_URL = "https://huggingface.co";
+
+    let promptSeleccionado = "";
+    let streamVo = null;
+
+    function seleccionarEstilo(prompt) {
+        promptSeleccionado = prompt;
+        document.getElementById('pantalla-menu').classList.add('hidden');
+        document.getElementById('pantalla-camara').classList.remove('hidden');
+        encenderCamara();
+    }
+
+    async function encenderCamara() {
+        try {
+            streamVo = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "user" }, 
+                audio: false 
+            });
+            document.getElementById('video').srcObject = streamVo;
+        } catch (err) {
+            alert("No se pudo acceder a la cámara: " + err);
+        }
+    }
+
+    function tomarFoto() {
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Ajustamos el tamaño del lienzo al video
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        // Dibujamos el cuadro actual del video en el lienzo
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Apagamos la cámara para ahorrar batería
+        if(streamVo) streamVo.getTracks().forEach(track => track.stop());
+
+        document.getElementById('pantalla-camara').classList.add('hidden');
+        document.getElementById('pantalla-resultado').classList.remove('hidden');
+        document.getElementById('loading').classList.remove('hidden');
+        document.getElementById('resultado-ia').classList.add('hidden');
+        document.getElementById('btn-reintentar').classList.add('hidden');
+
+        // Convertimos la imagen a un archivo (Blob) para enviárselo a la IA [1]
+        canvas.toBlob(enviarAIA, 'image/jpeg', 0.8);
+    }
+
+    async function enviarAIA(blob) {
+        try {
+            // Creamos los datos para enviar el archivo y el prompt juntos [1]
+            const formData = new FormData();
+            formData.append("image", blob);
+            formData.append("prompt", promptSeleccionado);
+            formData.append("strength", "0.6"); // Cambia la foto original un 60% para darle el look animado
+
+            const response = await fetch(MODEL_URL, {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${HF_TOKEN}` },
+                body: blob // Algunos modelos libres leen directamente el archivo binario de la imagen [1]
+            });
+
+            if (!response.ok) throw new Error("Error en el servidor de IA");
+
+            const respuestaBlob = await response.blob();
+            const urlImagenFinal = URL.createObjectURL(respuestaBlob);
+            
+            // Mostramos la imagen final procesada
+            document.getElementById('loading').classList.add('hidden');
+            const imgResultado = document.getElementById('resultado-ia');
+            imgResultado.src = urlImagenFinal;
+            imgResultado.classList.remove('hidden');
+            document.getElementById('btn-reintentar').classList.remove('hidden');
+
+        } catch (error) {
+            alert("Hubo un problema al procesar la imagen: " + error.message);
+            volverMenu();
+        }
+    }
+
+    function volverMenu() {
+        if(streamVo) streamVo.getTracks().forEach(track => track.stop());
+        document.getElementById('pantalla-menu').classList.remove('hidden');
+        document.getElementById('pantalla-camara').classList.add('hidden');
+        document.getElementById('pantalla-resultado').classList.add('hidden');
+    }
+</script>
+</body>
+</html>
