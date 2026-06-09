@@ -38,44 +38,30 @@
             box-sizing: border-box;
         }
         button:active { background: #e84118; transform: scale(0.98); }
-        video, img {
+        video, canvas {
             width: 100%;
             border-radius: 15px;
             background: #000;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
         }
         video {
-            transform: scaleX(-1); /* Efecto espejo natural para selfies */
-        }
-        img#resultado-ia {
-            border: 3px solid #ff4757;
+            transform: scaleX(-1); /* Efecto espejo natural para la selfie */
         }
         .hidden { display: none; }
         .loading { font-size: 16px; color: #f1c40f; padding: 20px; font-weight: bold; }
-        .spinner {
-            border: 4px solid rgba(255,255,255,0.1);
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border-left-color: #f1c40f;
-            margin: 10px auto;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>✨ Espejo de IA Mágico ✨</h1>
-    <div class="subtitle">Crea avatares únicos al instante</div>
+    <h1>✨ Espejo Mágico de Filtros ✨</h1>
+    <div class="subtitle">Transformación digital en tu celular</div>
 
     <!-- PANTALLA 1: MENÚ DE ESTILOS -->
     <div id="pantalla-menu" class="card">
-        <h3 style="margin-top:0;">Elige tu estilo de caricatura:</h3>
-        <button onclick="seleccionarEstilo('A beautiful Pixar 3D animation style character avatar, Disney movie portrait, cute, highly detailed face, masterpiece')">🎬 Estilo Disney / Pixar 3D</button>
-        <button onclick="seleccionarEstilo('Anime manga style digital illustration, colorful artwork, studio ghibli aesthetic, expressive anime character face')">🌸 Estilo Anime / Manga</button>
-        <button onclick="seleccionarEstilo('Retro pop art comic book style drawing, bold black outlines, vibrant colors, vintage dots, comic poster art')">💥 Estilo Pop Art / Comic</button>
+        <h3 style="margin-top:0;">Elige tu estilo artístico:</h3>
+        <button onclick="seleccionarEstilo('popart')">💥 Estilo Pop Art / Cómics</button>
+        <button onclick="seleccionarEstilo('boceto')">✏️ Estilo Dibujo a Lápiz</button>
+        <button onclick="seleccionarEstilo('retro')">🕹️ Estilo Retro Vintage</button>
     </div>
 
     <!-- PANTALLA 2: CÁMARA FRONTAL -->
@@ -85,30 +71,23 @@
         <button onclick="volverMenu()" style="background:#444;">⬅️ Volver</button>
     </div>
 
-    <!-- PANTALLA 3: PROCESANDO Y RESULTADO -->
+    <!-- PANTALLA 3: RESULTADO ARTÍSTICO -->
     <div id="pantalla-resultado" class="card hidden">
-        <div id="loading" class="loading">
-            <div class="spinner"></div>
-            🪄 La IA está dibujando tu avatar...<br>
-            <span style="font-size:12px; color:#aaa; font-weight:normal;">Si es el primer uso, el servidor gratuito puede tardar hasta 15 segundos en responder.</span>
-        </div>
-        <img id="resultado-ia" class="hidden" alt="Tu caricatura">
-        <button id="btn-reintentar" onclick="volverMenu()" class="hidden">✨ Probar otra vez</button>
+        <div id="loading" class="loading">🪄 Procesando pixeles artísticos...</div>
+        <canvas id="canvas-resultado"></canvas>
+        <button id="btn-reintentar" onclick="volverMenu()">✨ Probar otro estilo</button>
     </div>
+    
+    <!-- Canvas auxiliar oculto para tomar la muestra del video -->
+    <canvas id="canvas-oculto" class="hidden"></canvas>
 </div>
 
 <script>
-    // Limpia espacios fantasmas al pegar el token
-    const HF_TOKEN = "TU_TOKEN_AQUI".trim(); 
-    
-    // Cambiamos a este endpoint que gestiona de manera impecable peticiones nativas de texto desde el navegador
-    const MODEL_URL = "https://huggingface.co";
-
-    let promptSeleccionado = "";
+    let estiloSeleccionado = "";
     let streamVo = null;
 
-    function seleccionarEstilo(prompt) {
-        promptSeleccionado = prompt;
+    function seleccionarEstilo(estilo) {
+        estiloSeleccionado = estilo;
         document.getElementById('pantalla-menu').classList.add('hidden');
         document.getElementById('pantalla-camara').classList.remove('hidden');
         encenderCamara();
@@ -116,7 +95,7 @@
 
     async function encenderCamara() {
         try {
-            // Fuerza de manera directa el uso de la cámara frontal del celular
+            // Configuración para forzar estrictamente la cámara frontal "selfie" en el celular
             const opciones = {
                 audio: false,
                 video: { facingMode: "user" }
@@ -124,68 +103,104 @@
             streamVo = await navigator.mediaDevices.getUserMedia(opciones);
             document.getElementById('video').srcObject = streamVo;
         } catch (err) {
-            alert("Acceso a cámara frontal denegado. Intentando cámara estándar.");
             try {
+                // Alternativa secundaria si falla la detección automática
                 streamVo = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
                 document.getElementById('video').srcObject = streamVo;
             } catch(e) {
-                alert("Error de permisos: Activa los accesos de cámara para este sitio web en los ajustes de tu celular.");
+                alert("Error de permisos: Activa los accesos de cámara en el navegador de tu celular.");
             }
         }
     }
 
     function tomarFoto() {
-        // Cerramos el flujo de la cámara para liberar memoria en el móvil
+        const video = document.getElementById('video');
+        const canvasOculto = document.getElementById('canvas-oculto');
+        const canvasResultado = document.getElementById('canvas-resultado');
+        
+        const ctxOculto = canvasOculto.getContext('2d');
+        const ctxResultado = canvasResultado.getContext('2d');
+
+        // Sincronizamos las dimensiones de captura con las del video real
+        const width = video.videoWidth || 640;
+        const height = video.videoHeight || 480;
+        
+        canvasOculto.width = width;
+        canvasOculto.height = height;
+        canvasResultado.width = width;
+        canvasResultado.height = height;
+
+        // Dibujamos la selfie invirtiendo el lienzo para corregir el espejo de la cámara frontal
+        ctxOculto.translate(width, 0);
+        ctxOculto.scale(-1, 1);
+        ctxOculto.drawImage(video, 0, 0, width, height);
+        ctxOculto.setTransform(1, 0, 0, 1, 0, 0); // Limpiar transformación
+
+        // Apagamos la cámara de inmediato para ahorrar recursos del teléfono
         if(streamVo) streamVo.getTracks().forEach(track => track.stop());
 
         document.getElementById('pantalla-camara').classList.add('hidden');
         document.getElementById('pantalla-resultado').classList.remove('hidden');
         document.getElementById('loading').classList.remove('hidden');
-        document.getElementById('resultado-ia').classList.add('hidden');
-        document.getElementById('btn-reintentar').classList.add('hidden');
 
-        // Procesamos directo con el motor de IA
-        generarAvatarIA();
+        // Aplicamos el procesamiento matemático sobre la matriz de pixeles
+        setTimeout(() => {
+            const imgData = ctxOculto.getImageData(0, 0, width, height);
+            
+            if (estiloSeleccionado === "popart") {
+                aplicarFiltroPopArt(imgData);
+            } else if (estiloSeleccionado === "boceto") {
+                aplicarFiltroBoceto(imgData);
+            } else if (estiloSeleccionado === "retro") {
+                aplicarFiltroRetro(imgData);
+            }
+
+            // Pintamos los pixeles modificados en el lienzo de resultado
+            ctxResultado.putImageData(imgData, 0, 0);
+            document.getElementById('loading').classList.add('hidden');
+        }, 100);
     }
 
-    async function generarAvatarIA() {
-        try {
-            // Configuramos la cabecera exacta para saltarnos las restricciones de red y enviar formato plano estructurado
-            const response = await fetch(MODEL_URL, {
-                method: "POST",
-                headers: { 
-                    "Authorization": `Bearer ${HF_TOKEN}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ 
-                    inputs: promptSeleccionado,
-                    options: { wait_for_model: true } // OBLIGA al servidor a mantener la conexión viva si está despertando
-                })
-            });
+    // --- ALGORITMOS DE PROCESAMIENTO NATIVO DE PIXELES ---
 
-            if (!response.ok) {
-                throw new Error("El servidor de IA está saturado. Vuelve a intentarlo en unos instantes.");
+    function aplicarFiltroPopArt(imgData) {
+        const data = imgData.data;
+        for (let i = 0; i < data.length; i += 4) {
+            // Calculamos el brillo del pixel actual
+            let brillo = (data[i] + data[i+1] + data[i+2]) / 3;
+            // Contrastamos drásticamente los colores para simular arte pop impreso
+            if (brillo > 128) {
+                data[i] = 255;     // Rojo al máximo
+                data[i+1] = 71;    // Verde pastel
+                data[i+2] = 87;    // Azul pop
+            } else {
+                data[i] = 30;      // Sombras oscuras azuladas
+                data[i+1] = 30;
+                data[i+2] = 46;
             }
+        }
+    }
 
-            const respuestaBlob = await response.blob();
-            
-            // Verificación estricta del archivo devuelto por el servidor
-            if (!respuestaBlob.type.startsWith('image/')) {
-                throw new Error("El servidor no devolvió una imagen válida procesable.");
-            }
+    function aplicarFiltroBoceto(imgData) {
+        const data = imgData.data;
+        for (let i = 0; i < data.length; i += 4) {
+            // Conversión nativa a escala de grises estilo lápiz
+            let gris = 0.3 * data[i] + 0.59 * data[i+1] + 0.11 * data[i+2];
+            // Marcamos las líneas intensas
+            let trazo = gris < 90 ? 30 : 240;
+            data[i] = trazo;
+            data[i+1] = trazo;
+            data[i+2] = trazo;
+        }
+    }
 
-            const urlImagenFinal = URL.createObjectURL(respuestaBlob);
-            
-            // Renderizado en pantalla del resultado final
-            document.getElementById('loading').classList.add('hidden');
-            const imgResultado = document.getElementById('resultado-ia');
-            imgResultado.src = urlImagenFinal;
-            imgResultado.classList.remove('hidden');
-            document.getElementById('btn-reintentar').classList.remove('hidden');
-
-        } catch (error) {
-            alert("Aviso de Red: " + error.message + "\nPrueba nuevamente presionando el botón.");
-            volverMenu();
+    function aplicarFiltroRetro(imgData) {
+        const data = imgData.data;
+        for (let i = 0; i < data.length; i += 4) {
+            // Reducción drástica de color para look vintage de cartucho de videojuego antiguo
+            data[i] = Math.round(data[i] / 64) * 64;
+            data[i+1] = Math.round(data[i+1] / 64) * 64;
+            data[i+2] = Math.round(data[i+2] / 64) * 64;
         }
     }
 
