@@ -2,199 +2,741 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Espejo de IA Mágico</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Espejo Mágico de Caricaturas</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
+        :root {
+            --bg: #0c0c14;
+            --card: rgba(255,255,255,0.035);
+            --card-border: rgba(255,255,255,0.07);
+            --fg: #f0ede6;
+            --muted: #6b6660;
+            --accent: #ff6347;
+            --accent2: #ffa726;
+            --accent-glow: rgba(255,99,71,0.25);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #121212;
-            color: white;
-            text-align: center;
-            margin: 0;
-            padding: 20px;
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            min-height: 100vh;
+            overflow-x: hidden;
         }
-        h1 { color: #ff4757; font-size: 24px; margin-bottom: 5px; }
-        .subtitle { color: #888; font-size: 14px; margin-bottom: 25px; }
-        .container { max-width: 450px; margin: 0 auto; }
+        /* Fondo atmosférico animado */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background:
+                radial-gradient(ellipse at 30% 20%, rgba(255,99,71,0.07) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(255,167,38,0.05) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(255,60,60,0.03) 0%, transparent 70%);
+            animation: bgShift 18s ease-in-out infinite alternate;
+            z-index: 0;
+            pointer-events: none;
+        }
+        @keyframes bgShift {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            100% { transform: translate(-4%, 2%) rotate(2deg); }
+        }
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 460px;
+            margin: 0 auto;
+            padding: 20px 16px;
+        }
+        header { text-align: center; margin-bottom: 24px; }
+        header h1 {
+            font-size: 26px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.2;
+        }
+        header p { color: var(--muted); font-size: 14px; font-weight: 300; margin-top: 5px; }
+
+        /* Tarjetas glassmorphism */
         .card {
-            background: #1e1e1e;
-            padding: 25px;
+            background: var(--card);
+            border: 1px solid var(--card-border);
             border-radius: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+            padding: 24px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
         }
-        button {
-            background: #ff4757;
-            color: white;
-            border: none;
-            padding: 15px 20px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 30px;
+        .card.hidden { display: none; }
+        .card.fade-in { animation: fadeIn 0.35s ease-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .card h3 { font-size: 17px; font-weight: 700; margin-bottom: 18px; text-align: center; }
+
+        /* Botones de selección de estilo */
+        .style-btn {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            width: 100%;
+            padding: 15px 16px;
+            margin-bottom: 10px;
+            background: rgba(255,255,255,0.035);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 14px;
+            color: var(--fg);
+            font-family: 'Outfit', sans-serif;
+            font-size: 15px;
+            font-weight: 500;
             cursor: pointer;
-            margin: 10px 0;
-            width: 100%;
-            transition: 0.2s;
-            box-sizing: border-box;
+            transition: all 0.2s;
+            text-align: left;
         }
-        button:active { background: #e84118; transform: scale(0.98); }
-        video, img {
-            width: 100%;
-            border-radius: 15px;
+        .style-btn:last-child { margin-bottom: 0; }
+        .style-btn:hover, .style-btn:active {
+            background: rgba(255,99,71,0.1);
+            border-color: rgba(255,99,71,0.3);
+            transform: translateY(-1px);
+        }
+        .style-btn .icon {
+            width: 44px; height: 44px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; flex-shrink: 0; color: #fff;
+        }
+        .style-btn .info { flex: 1; }
+        .style-btn .info span {
+            display: block; font-size: 12px;
+            color: var(--muted); font-weight: 300; margin-top: 2px;
+        }
+        .icon-pixar { background: linear-gradient(135deg, #ff6347, #ff9a76); }
+        .icon-anime { background: linear-gradient(135deg, #e84393, #fd79a8); }
+        .icon-popart { background: linear-gradient(135deg, #fdcb6e, #e17055); }
+
+        /* Video de cámara */
+        .video-wrap {
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
             background: #000;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+            margin-bottom: 16px;
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.6);
         }
-        video {
-            transform: scaleX(-1); /* Efecto espejo natural para selfies */
+        .video-wrap video {
+            width: 100%; display: block;
+            transform: scaleX(-1); /* Espejo natural */
         }
-        img#resultado-ia {
-            border: 3px solid #ff4757;
+        .video-wrap::after {
+            content: '';
+            position: absolute; inset: 0;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            pointer-events: none;
         }
-        .hidden { display: none; }
-        .loading { font-size: 16px; color: #f1c40f; padding: 20px; font-weight: bold; }
-        .spinner {
-            border: 4px solid rgba(255,255,255,0.1);
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border-left-color: #f1c40f;
-            margin: 10px auto;
-            animation: spin 1s linear infinite;
+
+        /* Botones de acción */
+        .action-btn {
+            width: 100%; padding: 15px;
+            border: none; border-radius: 14px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 15px; font-weight: 700;
+            cursor: pointer; transition: all 0.15s;
+            margin-bottom: 10px;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
         }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .action-btn:last-child { margin-bottom: 0; }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            color: #fff;
+            box-shadow: 0 4px 20px var(--accent-glow);
+        }
+        .btn-primary:active { transform: scale(0.97); box-shadow: 0 2px 10px var(--accent-glow); }
+        .btn-secondary {
+            background: rgba(255,255,255,0.05);
+            color: var(--muted);
+            border: 1px solid rgba(255,255,255,0.07);
+        }
+        .btn-secondary:active { background: rgba(255,255,255,0.09); }
+
+        /* Progreso de procesamiento */
+        .progress-box { padding: 20px 0; }
+        .progress-title {
+            text-align: center; font-size: 17px; font-weight: 700;
+            margin-bottom: 20px;
+        }
+        .progress-title i { color: var(--accent); }
+        .step-list { display: flex; flex-direction: column; gap: 11px; }
+        .step-item {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 13px; color: var(--muted);
+            transition: color 0.3s;
+        }
+        .step-item.active { color: var(--accent); }
+        .step-item.done { color: #66bb6a; }
+        .step-item i { width: 18px; text-align: center; font-size: 12px; }
+
+        /* Resultado comparativo */
+        .result-badge {
+            display: inline-block;
+            padding: 5px 14px; border-radius: 20px;
+            font-size: 11px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+        .badge-pixar { background: rgba(255,99,71,0.14); color: #ff6347; }
+        .badge-anime { background: rgba(232,67,147,0.14); color: #e84393; }
+        .badge-popart { background: rgba(253,203,110,0.14); color: #fdcb6e; }
+
+        .compare-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .compare-item { text-align: center; }
+        .compare-label {
+            font-size: 10px; color: var(--muted);
+            text-transform: uppercase; letter-spacing: 1.2px;
+            margin-bottom: 6px;
+        }
+        .compare-item img {
+            width: 100%; border-radius: 12px; display: block;
+            background: #000;
+        }
+        .compare-item img.styled {
+            border: 2px solid rgba(255,99,71,0.25);
+            box-shadow: 0 0 25px rgba(255,99,71,0.08);
+        }
+
+        /* Canvas ocultos */
+        .offscreen { display: none; }
+
+        /* Nota legal */
+        .note {
+            text-align: center; margin-top: 16px;
+            font-size: 11px; color: rgba(255,255,255,0.2);
+            font-weight: 300;
+        }
+
+        @media (max-width: 380px) {
+            header h1 { font-size: 22px; }
+            .card { padding: 18px; }
+            .style-btn { padding: 12px; gap: 10px; }
+            .style-btn .icon { width: 38px; height: 38px; font-size: 16px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>✨ Espejo de IA Mágico ✨</h1>
-    <div class="subtitle">Crea avatares únicos al instante</div>
+    <header>
+        <h1>Espejo Mágico de Caricaturas</h1>
+        <p>Transforma tu selfie en arte al instante</p>
+    </header>
 
-    <!-- PANTALLA 1: MENÚ DE ESTILOS -->
-    <div id="pantalla-menu" class="card">
-        <h3 style="margin-top:0;">Elige tu estilo de caricatura:</h3>
-        <button onclick="seleccionarEstilo('A beautiful Pixar 3D animation style character avatar, Disney movie portrait, cute, highly detailed face, masterpiece')">🎬 Estilo Disney / Pixar 3D</button>
-        <button onclick="seleccionarEstilo('Anime manga style digital illustration, colorful artwork, studio ghibli aesthetic, expressive anime character face')">🌸 Estilo Anime / Manga</button>
-        <button onclick="seleccionarEstilo('Retro pop art comic book style drawing, bold black outlines, vibrant colors, vintage dots, comic poster art')">💥 Estilo Pop Art / Comic</button>
-    </div>
+    <!-- PANTALLA 1: Selección de estilo -->
+    <section id="screen-menu" class="card fade-in" aria-label="Selección de estilo">
+        <h3>Elige tu estilo</h3>
+        <button class="style-btn" onclick="seleccionarEstilo('pixar')" aria-label="Estilo Disney Pixar">
+            <div class="icon icon-pixar"><i class="fas fa-film"></i></div>
+            <div class="info">
+                Disney / Pixar 3D
+                <span>Colores suaves, piel brillante, estilo película</span>
+            </div>
+        </button>
+        <button class="style-btn" onclick="seleccionarEstilo('anime')" aria-label="Estilo Anime Manga">
+            <div class="icon icon-anime"><i class="fas fa-star"></i></div>
+            <div class="info">
+                Anime / Manga
+                <span>Contornos firmes, paleta plana, expresivo</span>
+            </div>
+        </button>
+        <button class="style-btn" onclick="seleccionarEstilo('popart')" aria-label="Estilo Pop Art Cómic">
+            <div class="icon icon-popart"><i class="fas fa-bolt"></i></div>
+            <div class="info">
+                Pop Art / Cómic
+                <span>Colores primarios, tramas de puntos, líneas gruesas</span>
+            </div>
+        </button>
+        <p class="note">Todo el procesamiento ocurre en tu dispositivo. No se sube ninguna foto.</p>
+    </section>
 
-    <!-- PANTALLA 2: CÁMARA FRONTAL -->
-    <div id="pantalla-camara" class="card hidden">
-        <video id="video" autoplay playsinline></video>
-        <button onclick="tomarFoto()">📸 Capturar y Transformar</button>
-        <button onclick="volverMenu()" style="background:#444;">⬅️ Volver</button>
-    </div>
-
-    <!-- PANTALLA 3: PROCESANDO Y RESULTADO -->
-    <div id="pantalla-resultado" class="card hidden">
-        <div id="loading" class="loading">
-            <div class="spinner"></div>
-            🪄 La IA está dibujando tu avatar...<br>
-            <span style="font-size:12px; color:#aaa; font-weight:normal;">Si es el primer uso, el servidor gratuito puede tardar hasta 15 segundos en responder.</span>
+    <!-- PANTALLA 2: Cámara -->
+    <section id="screen-camera" class="card hidden" aria-label="Cámara">
+        <div class="video-wrap">
+            <video id="video" autoplay playsinline muted></video>
         </div>
-        <img id="resultado-ia" class="hidden" alt="Tu caricatura">
-        <button id="btn-reintentar" onclick="volverMenu()" class="hidden">✨ Probar otra vez</button>
-    </div>
+        <button class="action-btn btn-primary" onclick="tomarFoto()">
+            <i class="fas fa-camera"></i> Capturar y Transformar
+        </button>
+        <button class="action-btn btn-secondary" onclick="volverMenu()">
+            <i class="fas fa-arrow-left"></i> Volver
+        </button>
+    </section>
+
+    <!-- PANTALLA 3: Procesando -->
+    <section id="screen-processing" class="card hidden" aria-label="Procesando">
+        <div class="progress-box">
+            <div class="progress-title">
+                <i class="fas fa-wand-magic-sparkles"></i> Transformando tu foto...
+            </div>
+            <div class="step-list" id="step-list">
+                <div class="step-item" data-step="0">
+                    <i class="fas fa-circle-notch fa-spin"></i> Capturando fotograma
+                </div>
+                <div class="step-item" data-step="1">
+                    <i class="fas fa-circle"></i> Suavizando texturas
+                </div>
+                <div class="step-item" data-step="2">
+                    <i class="fas fa-circle"></i> Detectando contornos
+                </div>
+                <div class="step-item" data-step="3">
+                    <i class="fas fa-circle"></i> Aplicando estilo de color
+                </div>
+                <div class="step-item" data-step="4">
+                    <i class="fas fa-circle"></i> Finalizando obra de arte
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PANTALLA 4: Resultado -->
+    <section id="screen-result" class="card hidden" aria-label="Resultado">
+        <div style="text-align:center;">
+            <span id="result-badge" class="result-badge badge-pixar">Pixar 3D</span>
+        </div>
+        <div class="compare-grid">
+            <div class="compare-item">
+                <div class="compare-label">Original</div>
+                <img id="img-original" alt="Foto original">
+            </div>
+            <div class="compare-item">
+                <div class="compare-label">Caricatura</div>
+                <img id="img-result" class="styled" alt="Tu caricatura">
+            </div>
+        </div>
+        <button class="action-btn btn-primary" onclick="descargarResultado()">
+            <i class="fas fa-download"></i> Guardar en mi celular
+        </button>
+        <button class="action-btn btn-secondary" onclick="volverMenu()">
+            <i class="fas fa-redo"></i> Probar otro estilo
+        </button>
+    </section>
 </div>
 
+<!-- Canvases ocultos para procesamiento -->
+<canvas id="cvs-work" class="offscreen"></canvas>
+<canvas id="cvs-temp" class="offscreen"></canvas>
+
 <script>
-    // Limpia espacios fantasmas al pegar el token
-    const HF_TOKEN = "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".trim(); 
-    
-    // Cambiamos a este endpoint que gestiona de manera impecable peticiones nativas de texto desde el navegador
-    const MODEL_URL = "https://huggingface.co";
+/* =============================================
+   ESTADO GLOBAL
+   ============================================= */
+let estiloActual = '';
+let streamCamara = null;
+let urlOriginal = '';
+let urlResultado = '';
 
-    let promptSeleccionado = "";
-    let streamVo = null;
+/* =============================================
+   NAVEGACIÓN ENTRE PANTALLAS
+   ============================================= */
+const pantallas = ['screen-menu', 'screen-camera', 'screen-processing', 'screen-result'];
 
-    function seleccionarEstilo(prompt) {
-        promptSeleccionado = prompt;
-        document.getElementById('pantalla-menu').classList.add('hidden');
-        document.getElementById('pantalla-camara').classList.remove('hidden');
-        encenderCamara();
-    }
-
-    async function encenderCamara() {
-        try {
-            // Fuerza de manera directa el uso de la cámara frontal del celular
-            const opciones = {
-                audio: false,
-                video: { facingMode: "user" }
-            };
-            streamVo = await navigator.mediaDevices.getUserMedia(opciones);
-            document.getElementById('video').srcObject = streamVo;
-        } catch (err) {
-            alert("Acceso a cámara frontal denegado. Intentando cámara estándar.");
-            try {
-                streamVo = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-                document.getElementById('video').srcObject = streamVo;
-            } catch(e) {
-                alert("Error de permisos: Activa los accesos de cámara para este sitio web en los ajustes de tu celular.");
-            }
+function mostrarPantalla(id) {
+    pantallas.forEach(p => {
+        const el = document.getElementById(p);
+        if (p === id) {
+            el.classList.remove('hidden');
+            // Re-lanzar animación de entrada
+            el.classList.remove('fade-in');
+            void el.offsetWidth; // fuerza reflow
+            el.classList.add('fade-in');
+        } else {
+            el.classList.add('hidden');
         }
-    }
+    });
+}
 
-    function tomarFoto() {
-        // Cerramos el flujo de la cámara para liberar memoria en el móvil
-        if(streamVo) streamVo.getTracks().forEach(track => track.stop());
+function seleccionarEstilo(estilo) {
+    estiloActual = estilo;
+    mostrarPantalla('screen-camera');
+    encenderCamara();
+}
 
-        document.getElementById('pantalla-camara').classList.add('hidden');
-        document.getElementById('pantalla-resultado').classList.remove('hidden');
-        document.getElementById('loading').classList.remove('hidden');
-        document.getElementById('resultado-ia').classList.add('hidden');
-        document.getElementById('btn-reintentar').classList.add('hidden');
+function volverMenu() {
+    apagarCamara();
+    mostrarPantalla('screen-menu');
+}
 
-        // Procesamos directo con el motor de IA
-        generarAvatarIA();
-    }
-
-    async function generarAvatarIA() {
+/* =============================================
+   CÁMARA
+   ============================================= */
+async function encenderCamara() {
+    try {
+        streamCamara = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+        });
+        document.getElementById('video').srcObject = streamCamara;
+    } catch (err) {
+        // Fallback: intentar sin especificar cámara frontal
         try {
-            // Configuramos la cabecera exacta para saltarnos las restricciones de red y enviar formato plano estructurado
-            const response = await fetch(MODEL_URL, {
-                method: "POST",
-                headers: { 
-                    "Authorization": `Bearer ${HF_TOKEN}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ 
-                    inputs: promptSeleccionado,
-                    options: { wait_for_model: true } // OBLIGA al servidor a mantener la conexión viva si está despertando
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error("El servidor de IA está saturado. Vuelve a intentarlo en unos instantes.");
-            }
-
-            const respuestaBlob = await response.blob();
-            
-            // Verificación estricta del archivo devuelto por el servidor
-            if (!respuestaBlob.type.startsWith('image/')) {
-                throw new Error("El servidor no devolvió una imagen válida procesable.");
-            }
-
-            const urlImagenFinal = URL.createObjectURL(respuestaBlob);
-            
-            // Renderizado en pantalla del resultado final
-            document.getElementById('loading').classList.add('hidden');
-            const imgResultado = document.getElementById('resultado-ia');
-            imgResultado.src = urlImagenFinal;
-            imgResultado.classList.remove('hidden');
-            document.getElementById('btn-reintentar').classList.remove('hidden');
-
-        } catch (error) {
-            alert("Aviso de Red: " + error.message + "\nPrueba nuevamente presionando el botón.");
+            streamCamara = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            document.getElementById('video').srcObject = streamCamara;
+        } catch (e) {
+            alert('No se pudo acceder a la cámara. Verifica los permisos en los ajustes de tu navegador.');
             volverMenu();
         }
     }
+}
 
-    function volverMenu() {
-        if(streamVo) streamVo.getTracks().forEach(track => track.stop());
-        document.getElementById('pantalla-menu').classList.remove('hidden');
-        document.getElementById('pantalla-camara').classList.add('hidden');
-        document.getElementById('pantalla-resultado').classList.add('hidden');
+function apagarCamara() {
+    if (streamCamara) {
+        streamCamara.getTracks().forEach(t => t.stop());
+        streamCamara = null;
     }
+}
+
+/* =============================================
+   CAPTURA DE FOTO — LO QUE FALTABA
+   ============================================= */
+async function tomarFoto() {
+    const video = document.getElementById('video');
+
+    // Verificar que el video esté listo
+    if (video.readyState < 2) {
+        alert('La cámara aún se está preparando. Espera un momento e intenta de nuevo.');
+        return;
+    }
+
+    // Detenemos la cámara para liberar recursos
+    apagarCamara();
+
+    // Pasamos a la pantalla de procesamiento
+    mostrarPantalla('screen-processing');
+    reiniciarPasos();
+
+    // Ejecutamos el pipeline de transformación
+    try {
+        await procesarCaricatura(estiloActual);
+    } catch (err) {
+        console.error('Error en procesamiento:', err);
+        alert('Ocurrió un error al procesar la imagen. Intenta de nuevo.');
+        volverMenu();
+    }
+}
+
+/* =============================================
+   PIPELINE PRINCIPAL DE CARICATURA
+   ============================================= */
+async function procesarCaricatura(estilo) {
+    const video = document.getElementById('video');
+    const cvs = document.getElementById('cvs-work');
+    const ctx = cvs.getContext('2d', { willReadFrequently: true });
+
+    // Redimensionar para rendimiento en móviles (máx 480px)
+    const MAX = 480;
+    const escala = Math.min(MAX / video.videoWidth, MAX / video.videoHeight, 1);
+    const w = Math.round(video.videoWidth * escala);
+    const h = Math.round(video.videoHeight * escala);
+    cvs.width = w;
+    cvs.height = h;
+
+    // ---- PASO 0: Capturar fotograma con flip horizontal (espejo) ----
+    await marcarPaso(0);
+    ctx.save();
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, -w, 0, w, h);
+    ctx.restore();
+    // Guardamos la original ANTES de procesar
+    urlOriginal = cvs.toDataURL('image/jpeg', 0.85);
+    await dormir(280);
+
+    // ---- PASO 1: Suavizado según estilo ----
+    await marcarPaso(1);
+    const radioBlur = { pixar: 4, anime: 2, popart: 0 }[estilo] || 0;
+    if (radioBlur > 0) {
+        suavizarImagen(ctx, w, h, radioBlur);
+    }
+    await dormir(280);
+
+    // ---- PASO 2: Detección de bordes (Sobel) ----
+    await marcarPaso(2);
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const bordes = detectarBordesSobel(imgData.data, w, h);
+    await dormir(280);
+
+    // ---- PASO 3: Estilo de color ----
+    await marcarPaso(3);
+    const px = imgData.data;
+
+    if (estilo === 'popart') {
+        // Pop Art: posterización extrema + paleta limitada
+        posterizar(px, 4);
+        mapearPaletaPopArt(px);
+        ajustarSaturacion(px, 1.5);
+    } else {
+        // Pixar / Anime: posterización + saturación
+        const niveles = estilo === 'pixar' ? 8 : 5;
+        posterizar(px, niveles);
+        const sat = estilo === 'pixar' ? 1.4 : 1.2;
+        ajustarSaturacion(px, sat);
+        if (estilo === 'anime') aclararTonosPiel(px);
+    }
+
+    // Superponer bordes sobre la imagen coloreada
+    const cfgBordes = {
+        pixar:  { umbral: 40, fuerza: 0.6 },
+        anime:  { umbral: 18, fuerza: 0.95 },
+        popart: { umbral: 45, fuerza: 0.85 }
+    }[estilo];
+    aplicarBordes(px, bordes, w, h, cfgBordes.umbral, cfgBordes.fuerza);
+
+    ctx.putImageData(imgData, 0, 0);
+    await dormir(280);
+
+    // ---- PASO 4: Toques finales ----
+    await marcarPaso(4);
+    if (estilo === 'popart') {
+        overlayHalftone(ctx, w, h);
+    }
+    // Viñeta sutil para todos los estilos
+    aplicarVigneta(ctx, w, h);
+    await dormir(250);
+
+    // Generar resultado
+    urlResultado = cvs.toDataURL('image/png');
+
+    // Mostrar pantalla de resultado
+    mostrarResultado(estilo);
+}
+
+/* =============================================
+   ALGORITMOS DE PROCESAMIENTO DE IMAGEN
+   ============================================= */
+
+/** Suavizado Gaussiano aproximado usando el filtro nativo del canvas (hardware-accelerated) */
+function suavizarImagen(ctx, w, h, radio) {
+    const tmp = document.getElementById('cvs-temp');
+    tmp.width = w;
+    tmp.height = h;
+    const tmpCtx = tmp.getContext('2d');
+    // Copiar imagen actual al temporal
+    tmpCtx.drawImage(ctx.canvas, 0, 0);
+    // Dibujar de vuelta con blur aplicado
+    ctx.filter = 'blur(' + radio + 'px)';
+    ctx.drawImage(tmp, 0, 0);
+    ctx.filter = 'none';
+}
+
+/** Detección de bordes con operador Sobel. Devuelve array de magnitudes por píxel. */
+function detectarBordesSobel(data, w, h) {
+    // Convertir a escala de grises primero
+    const gray = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) {
+        const off = i * 4;
+        gray[i] = data[off] * 0.299 + data[off + 1] * 0.587 + data[off + 2] * 0.114;
+    }
+
+    const magnitudes = new Float32Array(w * h);
+    for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+            // Kernel Sobel X
+            const gx =
+                -gray[(y - 1) * w + (x - 1)] + gray[(y - 1) * w + (x + 1)]
+                - 2 * gray[y * w + (x - 1)] + 2 * gray[y * w + (x + 1)]
+                - gray[(y + 1) * w + (x - 1)] + gray[(y + 1) * w + (x + 1)];
+            // Kernel Sobel Y
+            const gy =
+                -gray[(y - 1) * w + (x - 1)] - 2 * gray[(y - 1) * w + x] - gray[(y - 1) * w + (x + 1)]
+                + gray[(y + 1) * w + (x - 1)] + 2 * gray[(y + 1) * w + x] + gray[(y + 1) * w + (x + 1)];
+
+            magnitudes[y * w + x] = Math.sqrt(gx * gx + gy * gy);
+        }
+    }
+    return magnitudes;
+}
+
+/** Reduce la cantidad de niveles de color por canal */
+function posterizar(data, niveles) {
+    const paso = 255 / Math.max(1, niveles - 1);
+    for (let i = 0; i < data.length; i += 4) {
+        data[i]     = Math.round(data[i] / paso) * paso;
+        data[i + 1] = Math.round(data[i + 1] / paso) * paso;
+        data[i + 2] = Math.round(data[i + 2] / paso) * paso;
+    }
+}
+
+/** Ajusta la saturación de toda la imagen */
+function ajustarSaturacion(data, factor) {
+    for (let i = 0; i < data.length; i += 4) {
+        const r = data[i], g = data[i + 1], b = data[i + 2];
+        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+        data[i]     = Math.min(255, Math.max(0, lum + factor * (r - lum)));
+        data[i + 1] = Math.min(255, Math.max(0, lum + factor * (g - lum)));
+        data[i + 2] = Math.min(255, Math.max(0, lum + factor * (b - lum)));
+    }
+}
+
+/** Superpone los bordes detectados como líneas oscuras sobre la imagen */
+function aplicarBordes(data, bordes, w, h, umbral, fuerza) {
+    for (let i = 0; i < w * h; i++) {
+        if (bordes[i] > umbral) {
+            // Intensidad proporcional a lo fuerte que es el borde
+            const blend = Math.min(1, (bordes[i] - umbral) / 80) * fuerza;
+            const off = i * 4;
+            data[off]     = data[off] * (1 - blend);
+            data[off + 1] = data[off + 1] * (1 - blend);
+            data[off + 2] = data[off + 2] * (1 - blend);
+        }
+    }
+}
+
+/** Mapea cada píxel al color más cercano de una paleta Pop Art */
+function mapearPaletaPopArt(data) {
+    const paleta = [
+        [230, 30, 50],   // rojo
+        [255, 210, 0],   // amarillo
+        [0, 140, 255],   // azul
+        [0, 210, 170],   // turquesa
+        [255, 60, 180],  // magenta
+        [255, 255, 255], // blanco
+        [35, 35, 35]     // negro
+    ];
+    for (let i = 0; i < data.length; i += 4) {
+        const r = data[i], g = data[i + 1], b = data[i + 2];
+        let minDist = Infinity, mejor = paleta[0];
+        for (let c = 0; c < paleta.length; c++) {
+            const dr = r - paleta[c][0], dg = g - paleta[c][1], db = b - paleta[c][2];
+            const d = dr * dr + dg * dg + db * db;
+            if (d < minDist) { minDist = d; mejor = paleta[c]; }
+        }
+        data[i] = mejor[0];
+        data[i + 1] = mejor[1];
+        data[i + 2] = mejor[2];
+    }
+}
+
+/** Aclara ligeramente los tonos de piel (estilo Anime) */
+function aclararTonosPiel(data) {
+    for (let i = 0; i < data.length; i += 4) {
+        const r = data[i], g = data[i + 1], b = data[i + 2];
+        // Heurística simple para detectar tonos de piel
+        if (r > 110 && g > 60 && b > 40 &&
+            r > g - 15 && g > b &&
+            (r - b) > 20 && Math.abs(r - g) < 90) {
+            const f = 1.12;
+            data[i]     = Math.min(255, r * f);
+            data[i + 1] = Math.min(255, g * f);
+            data[i + 2] = Math.min(255, b * f);
+        }
+    }
+}
+
+/** Overlay de trama de puntos estilo cómic (halftone) */
+function overlayHalftone(ctx, w, h) {
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const px = imgData.data;
+    const spacing = 4;
+    const maxTam = 2.5;
+
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    for (let y = 0; y < h; y += spacing) {
+        for (let x = 0; x < w; x += spacing) {
+            const off = (y * w + x) * 4;
+            const lum = px[off] * 0.299 + px[off + 1] * 0.587 + px[off + 2] * 0.114;
+            const tam = ((255 - lum) / 255) * maxTam;
+            if (tam > 0.4) {
+                const s = Math.max(1, Math.round(tam));
+                ctx.fillRect(x, y, s, s);
+            }
+        }
+    }
+}
+
+/** Viñeta sutil para darle un acabado cinematográfico */
+function aplicarVigneta(ctx, w, h) {
+    const diag = Math.sqrt(w * w + h * h);
+    const grad = ctx.createRadialGradient(w / 2, h / 2, diag * 0.25, w / 2, h / 2, diag * 0.6);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.25)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+}
+
+/* =============================================
+   UI: PASOS DE PROGRESO
+   ============================================= */
+function reiniciarPasos() {
+    document.querySelectorAll('.step-item').forEach(el => {
+        el.classList.remove('active', 'done');
+        const icono = el.querySelector('i');
+        icono.className = 'fas fa-circle';
+    });
+}
+
+async function marcarPaso(n) {
+    const items = document.querySelectorAll('.step-item');
+    // Marcar pasos anteriores como completados
+    for (let i = 0; i < n; i++) {
+        items[i].classList.remove('active');
+        items[i].classList.add('done');
+        items[i].querySelector('i').className = 'fas fa-check';
+    }
+    // Marcar paso actual como activo
+    items[n].classList.add('active');
+    items[n].querySelector('i').className = 'fas fa-circle-notch fa-spin';
+}
+
+/* =============================================
+   MOSTRAR RESULTADO
+   ============================================= */
+function mostrarResultado(estilo) {
+    // Configurar badge según estilo
+    const badge = document.getElementById('result-badge');
+    const textos = { pixar: 'Pixar 3D', anime: 'Anime', popart: 'Pop Art' };
+    const clases = { pixar: 'badge-pixar', anime: 'badge-anime', popart: 'badge-popart' };
+    badge.textContent = textos[estilo];
+    badge.className = 'result-badge ' + clases[estilo];
+
+    // Asignar imágenes
+    document.getElementById('img-original').src = urlOriginal;
+    document.getElementById('img-result').src = urlResultado;
+
+    mostrarPantalla('screen-result');
+}
+
+/* =============================================
+   DESCARGAR RESULTADO
+   ============================================= */
+function descargarResultado() {
+    if (!urlResultado) return;
+    const a = document.createElement('a');
+    a.download = 'caricatura-' + estiloActual + '.png';
+    a.href = urlResultado;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+/* =============================================
+   UTILIDADES
+   ============================================= */
+function dormir(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 </script>
 </body>
 </html>
